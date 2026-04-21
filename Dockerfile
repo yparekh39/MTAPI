@@ -25,4 +25,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 7321
 
 # Run the application using a production WSGI server like Gunicorn
-CMD ["uv", "run", "python", "app.py", "--host", "0.0.0.0"]
+CMD ["uv", "run", "python", "main.py", "--host", "0.0.0.0"]
