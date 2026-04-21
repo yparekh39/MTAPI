@@ -23,6 +23,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
 app.config.update(
     MAX_TRAINS=10,
     MAX_MINUTES=30,
@@ -236,6 +237,3 @@ def _make_envelope(data):
         'data': data,
         'updated': time
     }
-
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", use_reloader=False, port="7321")

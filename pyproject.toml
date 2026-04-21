@@ -13,6 +13,7 @@ dependencies = [
     "ndg-httpsclient",
     "pyasn1",
     "requests[security]",
+    "gunicorn~=23.0.0"
 ]
 
 [dependency-groups]
