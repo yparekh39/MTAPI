@@ -10,12 +10,17 @@
 """
 
 from mtapi.mtapi import Mtapi
+from mtaproto.feedresponse import TZ
 from flask import Flask, request, Response, render_template, abort, redirect
 import json
 from datetime import datetime
+from collections import defaultdict
 from functools import wraps, reduce
 import logging
 import os
+import requests
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.update(
@@ -154,6 +159,66 @@ def routes():
         'updated': mta.last_update()
         }
 
+@app.route('/next-trains/<stop_id>', methods=['GET'])
+@response_wrapper
+def nextTrainsForStop(stop_id):
+    ids = stop_id.split(',')
+    try:
+        data = mta.get_by_id(ids)
+        jsonData = _make_envelope(data)
+
+        return transformToNextTrains(jsonData['data'])
+        
+    except KeyError as e:
+        resp = Response(
+            response=json.dumps({'error': 'Station not found'}),
+            status=404,
+            mimetype="application/json"
+        )
+
+        return add_cors_header(resp)
+    
+def transformToNextTrains(stopData):
+    output = {}
+    for stop in stopData:
+        stopTimes = []
+        nextNorthTrains = map(lambda train: { train['route'] : getTimeUntilTrain(train) }, stop['N'])
+        mergedNorthTrains = defaultdict(list)
+        for d in nextNorthTrains:
+            for k, v in d.items():
+                mergedNorthTrains[k].append(v)
+
+        for route, times in mergedNorthTrains.items():
+            stopTimes.append({
+                "route": route,
+                "times": ",".join(times[:3]),
+                "direction": "Uptown"
+            })
+
+        nextSouthTrains = map(lambda train: { train['route'] : getTimeUntilTrain(train) }, stop['S'])
+        mergedSouthTrains = defaultdict(list)
+        for d in nextSouthTrains:
+            for k, v in d.items():
+                mergedSouthTrains[k].append(v)
+
+        for route, times in mergedSouthTrains.items():
+            stopTimes.append({
+                "route": route,
+                "times": ",".join(times[:3]),
+                "direction": "Downtown"
+            })
+
+        stopTimes.sort(key=lambda x: x["route"])
+        output[stop["name"]] = stopTimes
+
+    return output
+    
+def getTimeUntilTrain(train):
+    now = datetime.now(TZ)
+    diff = train['time'] - now
+    mins = int(diff.total_seconds() / 60)
+    return f"{str(mins)}m"
+
 def _envelope_reduce(a, b):
     if a['last_update'] and b['last_update']:
         return a if a['last_update'] < b['last_update'] else b
@@ -173,4 +238,4 @@ def _make_envelope(data):
     }
 
 if __name__ == '__main__':
-    app.run(use_reloader=False)
+    app.run(host="0.0.0.0", use_reloader=False, port="7321")

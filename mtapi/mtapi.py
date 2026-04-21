@@ -6,6 +6,8 @@ import csv, math, json
 import threading
 import logging
 import google.protobuf.message
+import certifi
+import ssl
 from mtaproto.feedresponse import FeedResponse, Trip, TripStop, TZ
 from mtapi._mtapithreader import _MtapiThreader
 
@@ -105,6 +107,7 @@ class Mtapi(object):
         return stops
 
     def _load_mta_feed(self, feed_url):
+        context = ssl.create_default_context(cafile=certifi.where())
         try:
             request = urllib.request.Request(feed_url)
             with contextlib.closing(urllib.request.urlopen(request)) as r:
